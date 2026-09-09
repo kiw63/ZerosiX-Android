@@ -1,0 +1,51 @@
+name: Build ZerosiX APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract ZerosiX source ZIP
+        run: |
+          mkdir -p source
+          unzip -q ZerosiX-Android-v0.1-source.zip -d source
+
+      - name: Locate Gradle project
+        run: |
+          PROJECT_DIR=$(find source -name settings.gradle.kts -o -name settings.gradle | head -n 1 | xargs dirname)
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Find APK
+        run: |
+          find "$PROJECT_DIR" -type f -name "*.apk" -print
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZerosiX-APK
+          path: |
+            ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
